@@ -82,7 +82,7 @@ function Game(props) {
         calculateGameScore(activeFrame.rolls[currentRollIndexInFrame])
       }
 
-      if (activeFrameIndex === 9) {
+      if (activeFrameIndex === 9) { // in last frame
         if ((activeFrame.isStrike || activeFrame.isSpare) && currentRollIndexInFrame < 2) { // Enable one more roll
           setCurrentRollIndexInFrame((currentRollIndex) => currentRollIndex + 1);
         }
