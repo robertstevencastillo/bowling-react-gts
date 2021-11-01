@@ -20,6 +20,7 @@ function Game(props) {
     }
   }));
 
+  // Once the frames array and the active frame index gets updated, immediately run this effect to reset the score board, and set the active frame to be the next frame
   useEffect(() => {
     if (frames[activeFrameIndex].rolls.length === 2 && activeFrameIndex !== 9) {
       setActiveFrameIndex((currentIndex) => currentIndex + 1);
@@ -34,14 +35,19 @@ function Game(props) {
     // Update the current frame with the score from the roll
     activeFrame.rolls.push(Number(scoreClicked))
     activeFrame.score = activeFrame.rolls.reduce((total, currentRollScore) => total + currentRollScore);
+    activeFrame.currentGameScore = activeFrame.rolls[currentRollIndexInFrame] + gameScore;
+
     _frames[activeFrameIndex] = activeFrame;
     setFrames(_frames);
 
-    if (currentRollIndexInFrame === 0) { //First roll in frame
+    // First roll in frame
+    if (currentRollIndexInFrame === 0) {
       // Determining if the previous frame resulted in a spare or strike
       if (_frames[activeFrameIndex - 1] && (_frames[activeFrameIndex - 1].isSpare || _frames[activeFrameIndex - 1].isStrike)) {
         const previousFrame = _frames[activeFrameIndex - 1];
         previousFrame.score = previousFrame.score + activeFrame.rolls[currentRollIndexInFrame]
+        previousFrame.currentGameScore = gameScore + activeFrame.rolls[currentRollIndexInFrame];
+
         _frames[activeFrameIndex - 1] = previousFrame;
         setFrames(_frames);
 
@@ -67,32 +73,38 @@ function Game(props) {
       }
     }
     else { // Second roll in frame
-      // Determine if the second roll resulted in a spare for the current frame
-      if (activeFrame.score === 10) {
-        activeFrame.isSpare = true;
-      }
-
       // Determining if the previous frame resulted in a strike
       if (_frames[activeFrameIndex - 1] && _frames[activeFrameIndex - 1].isStrike) {
         const previousFrame = _frames[activeFrameIndex - 1];
         previousFrame.score = previousFrame.score + activeFrame.rolls[currentRollIndexInFrame];
+        previousFrame.currentGameScore = gameScore + activeFrame.rolls[currentRollIndexInFrame];
+
         _frames[activeFrameIndex - 1] = previousFrame;
         setFrames(_frames);
 
         calculateGameScore(activeFrame.rolls[currentRollIndexInFrame])
       }
 
-      if (activeFrameIndex === 9) { // in last frame
-        if ((activeFrame.isStrike || activeFrame.isSpare) && currentRollIndexInFrame < 2) { // Enable one more roll
+      // Determine if the second roll resulted in a spare for the current frame
+      if (activeFrame.score === 10) {
+        activeFrame.isSpare = true;
+      }
+
+      // if in last frame
+      if (activeFrameIndex === 9) {
+        if (activeFrame.isStrike && currentRollIndexInFrame < 2) { // Enable another roll
           setCurrentRollIndexInFrame((currentRollIndex) => currentRollIndex + 1);
         }
-        else { // Game Over disable ScoreBoard
+        else if ((activeFrame.isSpare) && currentRollIndexInFrame < 2) { // Enable one more roll, and reset scoreboard if spare
+          setCurrentRollIndexInFrame((currentRollIndex) => currentRollIndex + 1);
+          resetScoreBoard();
+        }
+        else { // Game Over so disable ScoreBoard component
           setIsScoreBoardDisabled(true);
           return;
         }
-
       }
-      else { //Current frame is not the last frame
+      else { // currently in a frame that is not the last frame
         activeFrame.frameCompleted = true;
         _frames[activeFrameIndex] = activeFrame;
         setFrames(_frames);
@@ -101,7 +113,7 @@ function Game(props) {
       }
     }
 
-    calculateGameScore(activeFrame.rolls[currentRollIndexInFrame]);
+    calculateGameScore(activeFrame.rolls[currentRollIndexInFrame])
   }
 
   const calculateGameScore = (score) => {
