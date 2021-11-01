@@ -1,5 +1,6 @@
 import React from "react"
 import './Frame.css'
+import Roll from './Roll';
 
 function Frame(props) {
   return (
@@ -7,7 +8,7 @@ function Frame(props) {
       <h3>Frame : {props.index + 1} </h3>
       <div>
         {props.rolls.map((roll, index) => {
-          return <input key={index} type="number" value={roll} disabled={true}></input>
+          return <Roll key={index} roll={roll} />
         })}
         <p>Frame Score: {props.frameScore}</p>
         <p>Current Game Score: {props.currentGameScore} </p>
