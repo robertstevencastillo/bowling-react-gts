@@ -23,14 +23,16 @@ function Game(props) {
   const calculateGameScore = (score) => (setGameScore((currGameScore) => currGameScore + score));
   const moveToNextFrame = () => (setActiveFrameIndex((currentIndex) => currentIndex + 1));
   const resetScoreBoard = () => (setScoreBoard([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+  const determineThirdRoll = (activeFrame) => (activeFrameIndex === 9 && !activeFrame.isSpare && activeFrame.rolls.length === 2);
+  const determineEndGame = (activeFrame) => (activeFrameIndex === 9 && activeFrame.rolls.length === 3);
 
-  const calculateSpareBonus = (rolls) => {
+  const calculateStrikeBonus = (roll) => (roll);
+  const calculateSpareBonus = (rolls) => { // Not the greatest way of doing it to be honest
     if (rolls.length !== 1) {
       return 0;
     }
     return rolls[0]
   }
-  const calculateStrikeBonus = (roll) => (roll);
 
   const updateFrameAfterRoll = (frameIndex, updatedFrame) => {
     const _frames = frames.slice();
@@ -51,6 +53,9 @@ function Game(props) {
     const activeFrame = _frames[activeFrameIndex];
     const previousFrame = _frames[activeFrameIndex - 1] ? _frames[activeFrameIndex - 1] : null
 
+    activeFrame.isStrike = pinsKnockedDown === 10;
+
+
     if (pinsKnockedDown === 10) { // rolled a strike
       activeFrame.isStrike = true;
       activeFrame.rolls.push(pinsKnockedDown);
@@ -59,22 +64,11 @@ function Game(props) {
 
       updateFrameAfterRoll(activeFrameIndex, activeFrame);
       calculateGameScore(pinsKnockedDown);
-      moveToNextFrame();
-    }
-    else { // did not roll a strike, get an additional roll in frame
-      if (activeFrame.rolls.length === 1) { // Second roll
-        activeFrame.rolls.push(pinsKnockedDown);
-        activeFrame.score = activeFrame.score + pinsKnockedDown;
-        activeFrame.frameCompleted = true;
-        activeFrame.isSpare = isSpare(activeFrame.rolls);
-        activeFrame.currentGameScore = gameScore + pinsKnockedDown;
 
-        updateFrameAfterRoll(activeFrameIndex, activeFrame);
-        calculateGameScore(pinsKnockedDown);
-        resetScoreBoard();
-        moveToNextFrame();
-      }
-      else { // First roll
+      if (activeFrameIndex !== 9) moveToNextFrame();
+    }
+    else {
+      if (activeFrame.rolls.length === 0) { // First roll
         activeFrame.rolls.push(pinsKnockedDown);
         activeFrame.score = pinsKnockedDown;
         activeFrame.currentGameScore = gameScore + pinsKnockedDown;
@@ -82,10 +76,31 @@ function Game(props) {
         modifyScoreBoardAfterRoll(pinsKnockedDown);
         calculateGameScore(pinsKnockedDown);
       }
+      else { // Second roll
+        activeFrame.rolls.push(pinsKnockedDown);
+        activeFrame.score = activeFrame.score + pinsKnockedDown;
+        activeFrame.isSpare = isSpare(activeFrame.rolls);
+        activeFrame.currentGameScore = gameScore + pinsKnockedDown;
+        activeFrame.frameCompleted = true;
+
+        updateFrameAfterRoll(activeFrameIndex, activeFrame);
+        calculateGameScore(pinsKnockedDown);
+        resetScoreBoard();
+
+        if (activeFrameIndex !== 9) {
+          moveToNextFrame();
+        }
+
+        const shouldAddThirdRoll = determineThirdRoll(activeFrame);
+        if (shouldAddThirdRoll) modifyScoreBoardAfterRoll(pinsKnockedDown);
+
+        const isGameOver = determineEndGame(activeFrame);
+        setIsScoreBoardDisabled(isGameOver)
+      }
     }
 
     // if previous frame resulted in strike or spare
-    if (previousFrame && ((previousFrame.isSpare || previousFrame.isStrike) && activeFrameIndex !== 9)) {
+    if (previousFrame && (previousFrame.isSpare || previousFrame.isStrike)) {
       const previousFrameIndex = activeFrameIndex - 1;
 
       const scoreToAdd = previousFrame.isSpare ? calculateSpareBonus(activeFrame.rolls) : calculateStrikeBonus(pinsKnockedDown)
