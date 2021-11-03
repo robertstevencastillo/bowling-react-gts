@@ -26,15 +26,11 @@ function Game(props) {
   }
 
   const handleScore = (scoreClicked) => {
-    // Currently we are not handling consecutive strikes well at all. For example, if someone rolls a strike in frames 1, 2 and 3, you have to add frame 2 and frame 3 to frame 1, and so on.
-
-    // What seems like an ideal way to do it is to track the current roll. If someone rolled a strike in the current frame, then in the next frame, add the strike bonus to the previous
-    // roll index. 
-
     const pinsKnockedDown = Number(scoreClicked);
     const _frames = frames.slice();
     const activeFrame = _frames[activeFrameIndex];
     const previousFrame = _frames[activeFrameIndex - 1] ? _frames[activeFrameIndex - 1] : null
+    const previousPreviousFrame = _frames[activeFrameIndex - 2] ? _frames[activeFrameIndex - 2] : null;
 
     // Update the active frame object state
     activeFrame.rolls.push(pinsKnockedDown);
@@ -47,15 +43,31 @@ function Game(props) {
     if (previousFrame && previousFrame.isStrike) {
       previousFrame.score = previousFrame.score + pinsKnockedDown;
       previousFrame.currentGameScore = previousFrame.currentGameScore + pinsKnockedDown;
-      activeFrame.currentGameScore = gameScore + pinsKnockedDown; // TODO: Improve
+      activeFrame.currentGameScore = activeFrame.currentGameScore + pinsKnockedDown;
+
+      updateFramesStateAfterRoll(activeFrameIndex, activeFrame);
       updateFramesStateAfterRoll(activeFrameIndex - 1, previousFrame);
     }
 
     if (previousFrame && previousFrame.isSpare && activeFrame.rolls.length === 1) {
       previousFrame.score = previousFrame.score + pinsKnockedDown;
       previousFrame.currentGameScore = previousFrame.currentGameScore + pinsKnockedDown;
-      activeFrame.currentGameScore = previousFrame.currentGameScore + pinsKnockedDown;
+      activeFrame.currentGameScore = activeFrame.currentGameScore + pinsKnockedDown;
+
+      updateFramesStateAfterRoll(activeFrameIndex, activeFrame);
       updateFramesStateAfterRoll(activeFrameIndex - 1, previousFrame);
+    }
+
+    // Handling consecutive strikes
+    if (previousPreviousFrame && previousPreviousFrame.isStrike && previousFrame.isStrike && activeFrame.rolls.length === 1) {
+      previousPreviousFrame.score = previousPreviousFrame.score + pinsKnockedDown;
+      previousPreviousFrame.currentGameScore = previousPreviousFrame.currentGameScore + pinsKnockedDown;
+      previousFrame.currentGameScore = previousFrame.currentGameScore + pinsKnockedDown;
+      activeFrame.currentGameScore = activeFrame.currentGameScore + pinsKnockedDown;
+
+      updateFramesStateAfterRoll(activeFrameIndex, activeFrame);
+      updateFramesStateAfterRoll(activeFrameIndex - 1, previousFrame);
+      updateFramesStateAfterRoll(activeFrameIndex - 2, previousPreviousFrame);
     }
 
     // Determine the outcome of the current active frame
