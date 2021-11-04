@@ -25,7 +25,15 @@ function Game(props) {
     setFrames(() => _frames);
   }
 
-  const handleScore = (scoreClicked) => {
+  const handleResetGameClick = () => {
+    setScoreBoard(() => GameLib.resetScoreBoard());
+    setActiveFrameIndex(() => 0);
+    setGameScore(() => 0);
+    setIsScoreBoardDisabled(() => false);
+    setFrames(() => GameLib.resetFrames());
+  }
+
+  const handleScoreClick = (scoreClicked) => {
     const pinsKnockedDown = Number(scoreClicked);
     const _frames = frames.slice();
     const activeFrame = _frames[activeFrameIndex];
@@ -37,12 +45,14 @@ function Game(props) {
     activeFrame.score = GameLib.calculateFrameScore(activeFrame.rolls);
     activeFrame.isStrike = GameLib.isStrike(activeFrame.rolls);
     activeFrame.isSpare = GameLib.isSpare(activeFrame.rolls);
-    activeFrame.currentGameScore = pinsKnockedDown + gameScore;
+    activeFrame.currentGameScore = activeFrame.rolls.length === 3 && activeFrame.isStrike ? gameScore : pinsKnockedDown + gameScore;
 
     // Check if previous frame resulted in a spare or strike
     if (previousFrame && previousFrame.isStrike) {
-      previousFrame.score = previousFrame.score + pinsKnockedDown;
-      previousFrame.currentGameScore = previousFrame.currentGameScore + pinsKnockedDown;
+      if (activeFrame.rolls.length !== 3) { // Added this if block mainly for dealing with the last frame
+        previousFrame.score = previousFrame.score + pinsKnockedDown;
+        previousFrame.currentGameScore = previousFrame.currentGameScore + pinsKnockedDown;
+      }
       activeFrame.currentGameScore = activeFrame.currentGameScore + pinsKnockedDown;
 
       updateFramesStateAfterRoll(activeFrameIndex, activeFrame);
@@ -70,13 +80,23 @@ function Game(props) {
       updateFramesStateAfterRoll(activeFrameIndex - 2, previousPreviousFrame);
     }
 
-    // Determine the outcome of the current active frame
-    if (activeFrame.isStrike || activeFrame.rolls.length === 2) {
+    if (GameLib.isLastFrame(activeFrameIndex)) { // This if block could be done better, unsure how though
+      if (!GameLib.isStrike(activeFrame.rolls)) {
+        setScoreBoard(() => GameLib.calculateHighestPossibleRoll(pinsKnockedDown))
+        if (GameLib.isSpare(activeFrame.rolls)) setScoreBoard(() => GameLib.resetScoreBoard());
+      }
+
+      if (GameLib.shouldFinishGame(activeFrameIndex, activeFrame)) {
+        activeFrame.currentGameScore = gameScore + pinsKnockedDown;
+        setIsScoreBoardDisabled(() => GameLib.shouldFinishGame(activeFrameIndex, activeFrame))
+      }
+    }
+    else if (activeFrame.isStrike || activeFrame.rolls.length === 2) {
+      setActiveFrameIndex((currentIndex) => currentIndex + 1)
       setScoreBoard(() => GameLib.resetScoreBoard());
-      setActiveFrameIndex((currentIndex) => currentIndex + 1);
     }
     else {
-      setScoreBoard(() => GameLib.calculateHighestPossibleSecondRoll(pinsKnockedDown));
+      setScoreBoard(() => GameLib.calculateHighestPossibleRoll(pinsKnockedDown));
     }
 
     updateFramesStateAfterRoll(activeFrameIndex, activeFrame);
@@ -87,7 +107,7 @@ function Game(props) {
 
   return (
     <div>
-      <ScoreBoard scoreBoard={scoreBoard} scoreBoardDisabled={isScoreBoardDisabled} handleScoreClick={handleScore} />
+      <ScoreBoard scoreBoard={scoreBoard} scoreBoardDisabled={isScoreBoardDisabled} handleScoreClick={handleScoreClick} handleResetGameClick={handleResetGameClick} />
       <h4>Current Game Score: {gameScore}</h4>
       <div className='frames'>
         {frames.map((frame, index) => <Frame key={index} index={index} rolls={frame.rolls} frameScore={frame.score} currentGameScore={frame.currentGameScore} />)}
