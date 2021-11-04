@@ -44,7 +44,7 @@ function Game(props) {
     activeFrame.rolls.push(pinsKnockedDown);
     activeFrame.score = GameLib.calculateFrameScore(activeFrame.rolls);
     activeFrame.isStrike = GameLib.isStrike(activeFrame.rolls);
-    activeFrame.isSpare = GameLib.isSpare(activeFrame.rolls);
+    activeFrame.isSpare = GameLib.isSpare(activeFrame.rolls); // The way this function is written, unless there's two values in the frame's rolls array, it'll return false.
     activeFrame.currentGameScore = activeFrame.rolls.length === 3 && activeFrame.isStrike ? gameScore : pinsKnockedDown + gameScore;
 
     // Check if previous frame resulted in a spare or strike
@@ -82,13 +82,14 @@ function Game(props) {
 
     if (GameLib.isLastFrame(activeFrameIndex)) { // This if block could be done better, unsure how though
       if (!GameLib.isStrike(activeFrame.rolls)) {
-        setScoreBoard(() => GameLib.calculateHighestPossibleRoll(pinsKnockedDown))
-        if (GameLib.isSpare(activeFrame.rolls)) setScoreBoard(() => GameLib.resetScoreBoard());
+        setScoreBoard(() => GameLib.calculateHighestPossibleRoll(pinsKnockedDown));
+        if (GameLib.isSpare(activeFrame.rolls)) setScoreBoard(() => GameLib.resetScoreBoard())
+        if (activeFrame.rolls.length === 2 && activeFrame.rolls[0] + activeFrame.rolls[1] !== 10) setIsScoreBoardDisabled(() => true); //using the isSpare function doesn't work here
+        if (activeFrame.rolls.length === 3 && activeFrame.rolls[0] + activeFrame.rolls[1] === 10) setIsScoreBoardDisabled(() => true); //using the isSpare function doesn't work here
       }
-
-      if (GameLib.shouldFinishGame(activeFrameIndex, activeFrame)) {
-        activeFrame.currentGameScore = gameScore + pinsKnockedDown;
-        setIsScoreBoardDisabled(() => GameLib.shouldFinishGame(activeFrameIndex, activeFrame))
+      else {
+        if (activeFrame.rolls.length === 2 && !activeFrame.isStrike) setScoreBoard(() => GameLib.calculateHighestPossibleRoll(pinsKnockedDown));
+        setIsScoreBoardDisabled(() => GameLib.shouldEndGame(activeFrame));
       }
     }
     else if (activeFrame.isStrike || activeFrame.rolls.length === 2) {
@@ -99,10 +100,10 @@ function Game(props) {
       setScoreBoard(() => GameLib.calculateHighestPossibleRoll(pinsKnockedDown));
     }
 
-    updateFramesStateAfterRoll(activeFrameIndex, activeFrame);
-
-    // Tally Current Game Score
+    // Tally frames state, Current Game Score and final frame
+    activeFrame.currentGameScore = activeFrame.rolls.length === 3 ? GameLib.sumFrames(_frames) : activeFrame.currentGameScore;
     setGameScore(() => GameLib.sumFrames(_frames));
+    updateFramesStateAfterRoll(activeFrameIndex, activeFrame);
   }
 
   return (

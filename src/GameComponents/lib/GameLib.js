@@ -38,7 +38,7 @@ class GameLib {
 
   static isLastFrame = (activeFrameIndex) => (activeFrameIndex === 9);
 
-  static shouldFinishGame = (activeFrameIndex, activeFrame) => (activeFrameIndex === 9 && activeFrame.rolls.length === 3)
+  static shouldEndGame = (activeFrame) => (activeFrame.rolls.length === 3);
 
 }
 
