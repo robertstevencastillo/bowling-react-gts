@@ -40,14 +40,14 @@ function Game(props) {
     const previousFrame = _frames[activeFrameIndex - 1] ? _frames[activeFrameIndex - 1] : null
     const previousPreviousFrame = _frames[activeFrameIndex - 2] ? _frames[activeFrameIndex - 2] : null;
 
-    // Update the active frame object state
+    // Update the active frame object
     activeFrame.rolls.push(pinsKnockedDown);
     activeFrame.score = GameLib.calculateFrameScore(activeFrame.rolls);
     activeFrame.isStrike = GameLib.isStrike(activeFrame.rolls);
     activeFrame.isSpare = GameLib.isSpare(activeFrame.rolls); // The way this function is written, unless there's two values in the frame's rolls array, it'll return false.
     activeFrame.currentGameScore = activeFrame.rolls.length === 3 && activeFrame.isStrike ? gameScore : pinsKnockedDown + gameScore;
 
-    // Check if previous frame resulted in a spare or strike
+    // Check if previous frame resulted in a spare or strike, and update scores
     if (previousFrame && previousFrame.isStrike) {
       if (activeFrame.rolls.length !== 3) { // Added this if block mainly for dealing with the last frame
         previousFrame.score = previousFrame.score + pinsKnockedDown;
@@ -68,7 +68,7 @@ function Game(props) {
       updateFramesStateAfterRoll(activeFrameIndex - 1, previousFrame);
     }
 
-    // Handling consecutive strikes
+    // Handling consecutive strikes, and update scores
     if (previousPreviousFrame && previousPreviousFrame.isStrike && previousFrame.isStrike && activeFrame.rolls.length === 1) {
       previousPreviousFrame.score = previousPreviousFrame.score + pinsKnockedDown;
       previousPreviousFrame.currentGameScore = previousPreviousFrame.currentGameScore + pinsKnockedDown;
@@ -80,19 +80,19 @@ function Game(props) {
       updateFramesStateAfterRoll(activeFrameIndex - 2, previousPreviousFrame);
     }
 
-    if (GameLib.isLastFrame(activeFrameIndex)) { // This if block could be done better, unsure how though
+    // If/else chain to determine how to navigate each frame
+    if (GameLib.isLastFrame(activeFrameIndex)) {
       if (!GameLib.isStrike(activeFrame.rolls)) {
         setScoreBoard(() => GameLib.calculateHighestPossibleRoll(pinsKnockedDown));
         if (GameLib.isSpare(activeFrame.rolls)) setScoreBoard(() => GameLib.resetScoreBoard())
-        if (activeFrame.rolls.length === 2 && activeFrame.rolls[0] + activeFrame.rolls[1] !== 10) setIsScoreBoardDisabled(() => true); //using the isSpare function doesn't work here
-        if (activeFrame.rolls.length === 3 && activeFrame.rolls[0] + activeFrame.rolls[1] === 10) setIsScoreBoardDisabled(() => true); //using the isSpare function doesn't work here
+        if (GameLib.shouldEndGameIfSpareNotRolled(activeFrame) || GameLib.shouldEndGameAfterBonusSpareRoll(activeFrame)) setIsScoreBoardDisabled(() => true);
       }
-      else {
-        if (activeFrame.rolls.length === 2 && !activeFrame.isStrike) setScoreBoard(() => GameLib.calculateHighestPossibleRoll(pinsKnockedDown));
+      else { // if rolled a strike in last round
+        if (GameLib.shouldAddBonusRollAfterSpare(activeFrame)) setScoreBoard(() => GameLib.calculateHighestPossibleRoll(pinsKnockedDown));
         setIsScoreBoardDisabled(() => GameLib.shouldEndGame(activeFrame));
       }
     }
-    else if (activeFrame.isStrike || activeFrame.rolls.length === 2) {
+    else if (GameLib.frameComplete(activeFrame)) {
       setActiveFrameIndex((currentIndex) => currentIndex + 1)
       setScoreBoard(() => GameLib.resetScoreBoard());
     }
@@ -100,9 +100,13 @@ function Game(props) {
       setScoreBoard(() => GameLib.calculateHighestPossibleRoll(pinsKnockedDown));
     }
 
-    // Tally frames state, Current Game Score and final frame
-    activeFrame.currentGameScore = activeFrame.rolls.length === 3 ? GameLib.sumFrames(_frames) : activeFrame.currentGameScore;
+    // Calculate final game score if the current frame is the last frame.
+    activeFrame.currentGameScore = GameLib.shouldEndGame(activeFrame) ? GameLib.sumFrames(_frames) : activeFrame.currentGameScore;
+
+    // Update game score state.
     setGameScore(() => GameLib.sumFrames(_frames));
+
+    // Update frames state
     updateFramesStateAfterRoll(activeFrameIndex, activeFrame);
   }
 
